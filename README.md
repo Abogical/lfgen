@@ -27,4 +27,4 @@ Where:
 
 ## Output
 
-The output integral image is a PNG file.
+The output integral image is an LF file with the config file and image inside it.

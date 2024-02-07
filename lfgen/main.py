@@ -4,8 +4,10 @@ import re
 import warnings
 import sys
 from collections import defaultdict
-import cv2
+from PIL import Image
 import numpy as np
+from zipfile import ZipFile
+import json
 
 argument_parser = argparse.ArgumentParser(
     prog='lfgen',
@@ -60,25 +62,36 @@ def main():
             if filename is None:
                 warnings.warn(f'Missing file for x:{x} and y:{y}. Will be blank in output image')
             else:
-                image = cv2.imread(os.path.join(arguments.directory, filename))
-                if output is None:
-                    input_height, input_width = image.shape[0:2]
-                    output_height, output_width = round(arguments.ratio*input_height), round(arguments.ratio*input_width)
-                    output = np.zeros(((max_y+1)*output_height, (max_x+1)*output_width, 3))
-                elif (input_height, input_width) != image.shape[0:2]:
-                    warnings.warn(
-                        f'Inconsistent input image resolutions. '
-                        f'Expected {input_height}x{input_width}, '
-                        f'got {image.shape[0]}x{image.shape[1]}.'
-                    )
-                # Downsample image
-                image = cv2.resize(image, (output_width, output_height))
-                # Add image to integral image
-                output[y*output_height:(y+1)*output_height, x*output_width:(x+1)*output_width, :] = image
+                with Image.open(os.path.join(arguments.directory, filename)) as image:
+                    if output is None:
+                        input_height, input_width = image.height, image.width
+                        output_height, output_width = round(arguments.ratio*input_height), round(arguments.ratio*input_width)
+                        output = np.zeros(((max_y+1)*output_height, (max_x+1)*output_width, 3), dtype='uint8')
+                    elif (input_height, input_width) != (image.height, image.width):
+                        warnings.warn(
+                            f'Inconsistent input image resolutions. '
+                            f'Expected {input_height}x{input_width}, '
+                            f'got {image.height}x{image.width}.'
+                        )
+                    
+                    # Downsample image and add image to integral image
+                    output[
+                        y*output_height:(y+1)*output_height,
+                        x*output_width:(x+1)*output_width,
+                        :
+                    ] = np.array(image.resize((output_width, output_height)))
     
-    _, buffer = cv2.imencode(".png", output)
+
     output_buffer = arguments.output or sys.stdout.buffer
-    output_buffer.write(buffer)
+    with ZipFile(output_buffer, mode='w') as zf:
+        zf.writestr('config.json', json.dumps({
+            "lightFieldAttributes": {
+                "hogelDimensions": [input_width, input_height],
+                "file": "image.png"
+            }
+        }))
+        with zf.open("image.png", mode='w') as image_zf:
+            Image.fromarray(output).save(image_zf, format='png')
 
 
 if __name__ == "__main__":

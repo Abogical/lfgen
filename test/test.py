@@ -6,7 +6,9 @@ import shutil
 import datetime
 import random
 import numpy as np
-import cv2
+from PIL import Image
+from zipfile import ZipFile
+import json
 import io
 
 class CLITest(unittest.TestCase):
@@ -23,7 +25,7 @@ class CLITest(unittest.TestCase):
         for x in range(cls.max_x+1):
             for y in range(cls.max_y+1):
                 random_image = np.random.randint(0, 256, (cls.height, cls.width, 3), dtype=np.uint8)
-                cv2.imwrite(os.path.join(cls.example_path, f'{x}-{y}.png'), random_image)
+                Image.fromarray(random_image).save(os.path.join(cls.example_path, f'{x}-{y}.png'))
 
     @classmethod
     def tearDownClass(cls):
@@ -41,6 +43,20 @@ class CLITest(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             lfgen.main.main()
 
+    def get_attrs_and_image(self, output_capture):
+        output_image = None
+        lf_attrs = None
+
+        output_capture.buffer.seek(0)
+        with ZipFile(output_capture.buffer) as zf:
+            config_json = json.load(zf.open('config.json'))
+            lf_attrs = config_json["lightFieldAttributes"]
+            self.assertEqual(lf_attrs["hogelDimensions"], [self.width, self.height])
+            with Image.open(zf.open(lf_attrs["file"]), formats=[os.path.splitext(lf_attrs["file"])[1][1:]]) as im:
+                output_image = np.array(im)
+
+        return lf_attrs, output_image        
+
     def test_lossless_output(self):
         output_capture = io.TextIOWrapper(io.BytesIO())
 
@@ -48,12 +64,12 @@ class CLITest(unittest.TestCase):
             with patch('sys.argv', ['lfgen', self.example_path]):
                 lfgen.main.main()
 
-        output_image = cv2.imdecode(np.frombuffer(output_capture.buffer.getvalue(), np.uint8), 1)
+        lf_attrs, output_image = self.get_attrs_and_image(output_capture)
 
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):
                 self.assertTrue((
-                    cv2.imread(os.path.join(self.example_path, f'{x}-{y}.png')) ==
+                    np.array(Image.open(os.path.join(self.example_path, f'{x}-{y}.png'))) ==
                     output_image[y*self.height:(y+1)*self.height, x*self.width:(x+1)*self.width, :]
                 ).all())
 
@@ -65,17 +81,16 @@ class CLITest(unittest.TestCase):
             with patch('sys.argv', ['lfgen', self.example_path, '-r', str(ratio)]):
                 lfgen.main.main()
 
-        output_image = cv2.imdecode(np.frombuffer(output_capture.buffer.getvalue(), np.uint8), 1)
+        lf_attrs, output_image = self.get_attrs_and_image(output_capture)
 
         height, width = round(self.height*ratio), round(self.width*ratio)
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):
-                self.assertTrue((
-                    cv2.resize(
-                        cv2.imread(os.path.join(self.example_path, f'{x}-{y}.png')),
-                        (width, height)
-                    ) == output_image[y*height:(y+1)*height, x*width:(x+1)*width, :]
-                ).all())
+                with Image.open(os.path.join(self.example_path, f'{x}-{y}.png')) as im: 
+                    self.assertTrue((
+                        np.array(im.resize((width, height))) ==
+                        output_image[y*height:(y+1)*height, x*width:(x+1)*width, :]
+                    ).all())
 
 
 if __name__ == '__main__':
