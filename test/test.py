@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-import quilter.main
+import lfgen.main
 import os
 import shutil
 import datetime
@@ -34,19 +34,19 @@ class CLITest(unittest.TestCase):
 
     def test_empty(self):
         with self.assertRaises(SystemExit):
-            quilter.main.main()
+            lfgen.main.main()
 
-    @patch("sys.argv", ['quilter', os.path.join('test', 'gibberish')])
+    @patch("sys.argv", ['lfgen', os.path.join('test', 'gibberish')])
     def test_non_existent_directory(self):
         with self.assertRaises(FileNotFoundError):
-            quilter.main.main()
+            lfgen.main.main()
 
     def test_lossless_output(self):
         output_capture = io.TextIOWrapper(io.BytesIO())
 
         with patch('sys.stdout', output_capture):
-            with patch('sys.argv', ['quilter', self.example_path]):
-                quilter.main.main()
+            with patch('sys.argv', ['lfgen', self.example_path]):
+                lfgen.main.main()
 
         output_image = cv2.imdecode(np.frombuffer(output_capture.buffer.getvalue(), np.uint8), 1)
 
@@ -62,8 +62,8 @@ class CLITest(unittest.TestCase):
         ratio = random.uniform(0.2, 0.9)
 
         with patch('sys.stdout', output_capture):
-            with patch('sys.argv', ['quilter', self.example_path, '-r', str(ratio)]):
-                quilter.main.main()
+            with patch('sys.argv', ['lfgen', self.example_path, '-r', str(ratio)]):
+                lfgen.main.main()
 
         output_image = cv2.imdecode(np.frombuffer(output_capture.buffer.getvalue(), np.uint8), 1)
 

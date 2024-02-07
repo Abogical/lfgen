@@ -1,7 +1,7 @@
-# Quilter
+# lfgen
 
-This is a script that returns a quilt suitable for light field images given a folder of images.
-It supports downsampling the images before generating the quilt.
+This is a script that returns an integral image suitable for light field images given a folder of images.
+It supports downsampling the images before generating the integral image.
 
 ## Folder file structure
 Each file in the folder needs to have the following filename format:
@@ -17,7 +17,7 @@ For example, the image at x-value 2 and y-value 7 may have a filename `2-7.NEF`.
 
 ## Usage
 ```
-quilter [-h] [-r RATIO] [-o OUTPUT] directory
+lfgen [-h] [-r RATIO] [-o OUTPUT] directory
 ```
 Where:
 - `directory`: Source directory
@@ -27,4 +27,4 @@ Where:
 
 ## Output
 
-The output quilt image is a PNG file.
+The output integral image is a PNG file.
