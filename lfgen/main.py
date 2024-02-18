@@ -8,6 +8,7 @@ from PIL import Image
 import numpy as np
 from zipfile import ZipFile
 import json
+import rawpy
 
 argument_parser = argparse.ArgumentParser(
     prog='lfgen',
@@ -40,16 +41,16 @@ def main():
     
     # Determine maximum x and y to set output resolution
     max_x, max_y = -1, -1
-    filename_grid = defaultdict(dict)
+    extension_grid = defaultdict(dict)
     for filename in os.listdir(arguments.directory):
         match = filename_re.match(filename)
         if match is None:
             warnings.warn(f'Filename {filename} does not match lfgen format. Ignoring.', RuntimeWarning)
         else:
-            x, y = int(match.group(1)), int(match.group(2))
+            x, y, ext = int(match.group(1)), int(match.group(2)), match.group(3)
             max_x = max(max_x, int(x))
             max_y = max(max_y, int(y))
-            filename_grid[x][y] = filename
+            extension_grid[x][y] = ext
 
     if max_x == -1:
         # No filename found with a matching format
@@ -58,11 +59,16 @@ def main():
     output, input_height, input_width, output_height, output_width = None, None, None, None, None
     for x in range(max_x+1):
         for y in range(max_y+1):
-            filename = filename_grid[x].get(y)
-            if filename is None:
+            extension = extension_grid[x].get(y)
+            if extension is None:
                 warnings.warn(f'Missing file for x:{x} and y:{y}. Will be blank in output image')
             else:
-                with Image.open(os.path.join(arguments.directory, filename)) as image:
+                filename = f'{x}-{y}.{extension}'
+                with (
+                    Image.fromarray(rawpy.imread(filename).postprocess())
+                    if extension.lower() == "nef" else
+                    Image.open(os.path.join(arguments.directory, filename))
+                ) as image:
                     if output is None:
                         input_height, input_width = image.height, image.width
                         output_height, output_width = round(arguments.ratio*input_height), round(arguments.ratio*input_width)

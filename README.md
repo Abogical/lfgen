@@ -11,7 +11,7 @@ Each file in the folder needs to have the following filename format:
 Where:
 - `x`: X value, or location from left edge
 - `y`: Y value, or location from top edge
-- `image format`: Any image format that OpenCV supports.
+- `image format`: Any image format that `pillow` supports, or Nikon RAW format (NEF).
 
 For example, the image at x-value 2 and y-value 7 may have a filename `2-7.png`.
 
