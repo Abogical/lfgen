@@ -4,11 +4,10 @@ import re
 import warnings
 import sys
 from collections import defaultdict
-from PIL import Image
 import numpy as np
 from zipfile import ZipFile
 import json
-import rawpy
+from wand.image import Image
 
 argument_parser = argparse.ArgumentParser(
     prog='lfgen',
@@ -64,11 +63,7 @@ def main():
                 warnings.warn(f'Missing file for x:{x} and y:{y}. Will be blank in output image')
             else:
                 filename = f'{x}-{y}.{extension}'
-                with (
-                    Image.fromarray(rawpy.imread(filename).postprocess())
-                    if extension.lower() == "nef" else
-                    Image.open(os.path.join(arguments.directory, filename))
-                ) as image:
+                with Image(filename=os.path.join(arguments.directory, filename)) as image:
                     if output is None:
                         input_height, input_width = image.height, image.width
                         output_height, output_width = round(arguments.ratio*input_height), round(arguments.ratio*input_width)
@@ -81,11 +76,14 @@ def main():
                         )
                     
                     # Downsample image and add image to integral image
+                    if output_height != input_height or output_width != input_width:
+                        image.resize(output_width, output_height, filter='gaussian')
+                    
                     output[
                         y*output_height:(y+1)*output_height,
                         x*output_width:(x+1)*output_width,
                         :
-                    ] = np.array(image.resize((output_width, output_height)))
+                    ] = np.array(image)
     
 
     output_buffer = arguments.output or sys.stdout.buffer
@@ -97,7 +95,9 @@ def main():
             }
         }))
         with zf.open("image.png", mode='w') as image_zf:
-            Image.fromarray(output).save(image_zf, format='png')
+            image = Image.from_array(output)
+            image.format = 'png'
+            image.save(file=image_zf)
 
 
 if __name__ == "__main__":
