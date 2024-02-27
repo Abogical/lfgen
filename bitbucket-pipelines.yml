@@ -5,6 +5,5 @@ pipelines:
     - step:
         name: Test
         script:
-          - apt install imagemagick
           - pip install -r requirements.txt
           - python -m unittest

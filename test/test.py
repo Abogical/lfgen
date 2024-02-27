@@ -6,10 +6,10 @@ import shutil
 import datetime
 import random
 import numpy as np
+from PIL import Image
 from zipfile import ZipFile
 import json
 import io
-from wand.image import Image
 
 class CLITest(unittest.TestCase):
     @classmethod
@@ -25,10 +25,7 @@ class CLITest(unittest.TestCase):
         for x in range(cls.max_x+1):
             for y in range(cls.max_y+1):
                 random_image = np.random.randint(0, 256, (cls.height, cls.width, 3), dtype=np.uint8)
-                with open(os.path.join(cls.example_path, f'{x}-{y}.png'), 'wb') as image_file:
-                    image = Image.from_array(random_image)
-                    image.format = 'png'
-                    image.save(file=image_file)
+                Image.fromarray(random_image).save(os.path.join(cls.example_path, f'{x}-{y}.png'))
 
     @classmethod
     def tearDownClass(cls):
@@ -55,7 +52,7 @@ class CLITest(unittest.TestCase):
             config_json = json.load(zf.open('config.json'))
             lf_attrs = config_json["lightFieldAttributes"]
             self.assertEqual(lf_attrs["hogelDimensions"], [self.width, self.height])
-            with Image(file=zf.open(lf_attrs["file"]), format=os.path.splitext(lf_attrs["file"])[1][1:]) as im:
+            with Image.open(zf.open(lf_attrs["file"]), formats=[os.path.splitext(lf_attrs["file"])[1][1:]]) as im:
                 output_image = np.array(im)
 
         return lf_attrs, output_image        
@@ -72,7 +69,7 @@ class CLITest(unittest.TestCase):
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):
                 self.assertTrue((
-                    np.array(Image(filename=os.path.join(self.example_path, f'{x}-{y}.png'))) ==
+                    np.array(Image.open(os.path.join(self.example_path, f'{x}-{y}.png'))) ==
                     output_image[y*self.height:(y+1)*self.height, x*self.width:(x+1)*self.width, :]
                 ).all())
 
@@ -89,10 +86,9 @@ class CLITest(unittest.TestCase):
         height, width = round(self.height*ratio), round(self.width*ratio)
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):
-                with Image(filename=os.path.join(self.example_path, f'{x}-{y}.png')) as im: 
-                    im.resize(width, height, filter='gaussian')
+                with Image.open(os.path.join(self.example_path, f'{x}-{y}.png')) as im: 
                     self.assertTrue((
-                        np.array(im) ==
+                        np.array(im.resize((width, height))) ==
                         output_image[y*height:(y+1)*height, x*width:(x+1)*width, :]
                     ).all())
 
