@@ -63,11 +63,11 @@ def main():
             if extension is None:
                 warnings.warn(f'Missing file for x:{x} and y:{y}. Will be blank in output image')
             else:
-                filename = f'{x}-{y}.{extension}'
+                filename = os.path.join(arguments.directory, f'{x}-{y}.{extension}')
                 with (
                     Image.fromarray(rawpy.imread(filename).postprocess())
                     if extension.lower() == "nef" else
-                    Image.open(os.path.join(arguments.directory, filename))
+                    Image.open(filename)
                 ) as image:
                     if output is None:
                         input_height, input_width = image.height, image.width
