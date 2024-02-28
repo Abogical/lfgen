@@ -9,6 +9,8 @@ import numpy as np
 from zipfile import ZipFile
 import json
 import rawpy
+from tqdm import tqdm
+import itertools
 
 argument_parser = argparse.ArgumentParser(
     prog='lfgen',
@@ -57,8 +59,10 @@ def main():
         raise SystemExit(f"No filename that matches the lfgen format is inside the directory {arguments.directory}")
 
     output, input_height, input_width, output_height, output_width = None, None, None, None, None
+    progress = tqdm(desc='Processing images', total=(max_x+1)*(max_y+1))
     for x in range(max_x+1):
         for y in range(max_y+1):
+            progress.set_postfix_str(f'Current: ({x}, {y})')
             extension = extension_grid[x].get(y)
             if extension is None:
                 warnings.warn(f'Missing file for x:{x} and y:{y}. Will be blank in output image')
@@ -86,6 +90,7 @@ def main():
                         x*output_width:(x+1)*output_width,
                         :
                     ] = np.array(image.resize((output_width, output_height)))
+            progress.update(1)
     
 
     output_buffer = arguments.output or sys.stdout.buffer
