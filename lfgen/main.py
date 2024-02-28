@@ -82,7 +82,7 @@ def main():
                     
                     # Downsample image and add image to integral image
                     output[
-                        y*output_height:(y+1)*output_height,
+                        (max_y-y)*output_height:(max_y-y+1)*output_height,
                         x*output_width:(x+1)*output_width,
                         :
                     ] = np.array(image.resize((output_width, output_height)))

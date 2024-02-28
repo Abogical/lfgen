@@ -68,10 +68,11 @@ class CLITest(unittest.TestCase):
 
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):
-                self.assertTrue((
-                    np.array(Image.open(os.path.join(self.example_path, f'{x}-{y}.png'))) ==
-                    output_image[y*self.height:(y+1)*self.height, x*self.width:(x+1)*self.width, :]
-                ).all())
+                with Image.open(os.path.join(self.example_path, f'{x}-{y}.png')) as im:
+                    self.assertTrue((
+                        np.array(im) ==
+                        output_image[(self.max_y-y)*self.height:(self.max_y-y+1)*self.height, x*self.width:(x+1)*self.width, :]
+                    ).all())
 
     def test_downsampled_output(self):
         output_capture = io.TextIOWrapper(io.BytesIO())
@@ -89,7 +90,7 @@ class CLITest(unittest.TestCase):
                 with Image.open(os.path.join(self.example_path, f'{x}-{y}.png')) as im: 
                     self.assertTrue((
                         np.array(im.resize((width, height))) ==
-                        output_image[y*height:(y+1)*height, x*width:(x+1)*width, :]
+                        output_image[(self.max_y-y)*height:(self.max_y-y+1)*height, x*width:(x+1)*width, :]
                     ).all())
 
 
