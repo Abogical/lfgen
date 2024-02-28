@@ -5,5 +5,5 @@ pipelines:
     - step:
         name: Test
         script:
-          - pip install -r requirements.txt
+          - pip install numpy rawpy pillow
           - python -m unittest
