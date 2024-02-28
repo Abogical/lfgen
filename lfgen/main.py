@@ -102,7 +102,7 @@ def main():
     
     output = None
     image_processor = ImageProcessor(arguments.ratio)
-    with futures.ProcessPoolExecutor(max_workers=arguments.jobs) as executor:
+    with futures.ThreadPoolExecutor(max_workers=arguments.jobs) as executor:
         future_to_coord = {}
         for x in range(max_x+1):
             for y in range(max_y+1):
