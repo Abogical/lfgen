@@ -24,6 +24,7 @@ Where:
 - `-h`: Show help
 - `-r RATIO` or ` --ratio RATIO`: Downsampling ratio to use
 - `-o OUTPUT` or ` --output OUTPUT`: Output filename, default is standard output.
+- `-j JOBS` or `--jobs JOBS`: Number of jobs to process images in parallel.
 
 ## Output
 
