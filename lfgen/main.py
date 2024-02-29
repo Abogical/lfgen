@@ -4,8 +4,7 @@ import re
 import warnings
 import sys
 from collections import defaultdict
-from PIL import Image
-import numpy as np
+from pyvips import Image
 from zipfile import ZipFile
 import json
 import rawpy
@@ -68,28 +67,37 @@ def main():
                 warnings.warn(f'Missing file for x:{x} and y:{y}. Will be blank in output image')
             else:
                 filename = os.path.join(arguments.directory, f'{x}-{y}.{extension}')
-                with (
-                    Image.fromarray(rawpy.imread(filename).postprocess())
-                    if extension.lower() == "nef" else
-                    Image.open(filename)
-                ) as image:
-                    if output is None:
-                        input_height, input_width = image.height, image.width
-                        output_height, output_width = round(arguments.ratio*input_height), round(arguments.ratio*input_width)
-                        output = np.zeros(((max_y+1)*output_height, (max_x+1)*output_width, 3), dtype='uint8')
-                    elif (input_height, input_width) != (image.height, image.width):
-                        warnings.warn(
-                            f'Inconsistent input image resolutions. '
-                            f'Expected {input_height}x{input_width}, '
-                            f'got {image.height}x{image.width}.'
-                        )
-                    
-                    # Downsample image and add image to integral image
-                    output[
-                        (max_y-y)*output_height:(max_y-y+1)*output_height,
-                        x*output_width:(x+1)*output_width,
-                        :
-                    ] = np.array(image.resize((output_width, output_height)))
+                image = None
+                if extension.lower() == "nef":
+                    with rawpy.imread(filename) as raw:
+                        image = Image.new_from_array(raw.postprocess())
+                else:
+                    image = Image.new_from_file(filename)
+
+                if output is None:
+                    input_height, input_width = image.height, image.width
+                    output_height, output_width = round(arguments.ratio*input_height), round(arguments.ratio*input_width)
+                    output = Image.black((max_x+1)*output_width, (max_y+1)*output_height, bands=3)
+                elif (input_height, input_width) != (image.height, image.width):
+                    warnings.warn(
+                        f'Inconsistent input image resolutions. '
+                        f'Expected {input_height}x{input_width}, '
+                        f'got {image.height}x{image.width}.'
+                    )
+                
+                # Downsample image and add image to integral image
+                if arguments.ratio != 1:
+                    image = image.resize(
+                        output_width/image.width,
+                        vscale=output_height/image.height
+                    )
+
+                output = output.insert(
+                    image,
+                    x*output_width,
+                    (max_y-y)*output_height,
+                    expand=False
+                )
             progress.update(1)
     
 
@@ -102,7 +110,7 @@ def main():
             }
         }))
         with zf.open("image.png", mode='w') as image_zf:
-            Image.fromarray(output).save(image_zf, format='png')
+            image_zf.write(output.pngsave_buffer())
 
 
 if __name__ == "__main__":

@@ -5,5 +5,5 @@ pipelines:
     - step:
         name: Test
         script:
-          - pip install numpy rawpy pillow tqdm
+          - pip install pyvips rawpy pillow tqdm
           - python -m unittest

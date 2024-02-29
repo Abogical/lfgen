@@ -5,8 +5,8 @@ import os
 import shutil
 import datetime
 import random
-import numpy as np
-from PIL import Image
+from pyvips import Image
+from pyvips.enums import BandFormat
 from zipfile import ZipFile
 import json
 import io
@@ -24,8 +24,10 @@ class CLITest(unittest.TestCase):
         os.makedirs(cls.example_path, exist_ok=True)
         for x in range(cls.max_x+1):
             for y in range(cls.max_y+1):
-                random_image = np.random.randint(0, 256, (cls.height, cls.width, 3), dtype=np.uint8)
-                Image.fromarray(random_image).save(os.path.join(cls.example_path, f'{x}-{y}.png'))
+                Image.gaussnoise(cls.width, cls.height).bandjoin([
+                    Image.gaussnoise(cls.width, cls.height),
+                    Image.gaussnoise(cls.width, cls.height)
+                ]).cast(BandFormat.UCHAR).pngsave(os.path.join(cls.example_path, f'{x}-{y}.png'))
 
     @classmethod
     def tearDownClass(cls):
@@ -52,8 +54,8 @@ class CLITest(unittest.TestCase):
             config_json = json.load(zf.open('config.json'))
             lf_attrs = config_json["lightFieldAttributes"]
             self.assertEqual(lf_attrs["hogelDimensions"], [self.width, self.height])
-            with Image.open(zf.open(lf_attrs["file"]), formats=[os.path.splitext(lf_attrs["file"])[1][1:]]) as im:
-                output_image = np.array(im)
+            with zf.open(lf_attrs["file"]) as img_file:
+                output_image = Image.pngload_buffer(img_file.read())
 
         return lf_attrs, output_image        
 
@@ -68,11 +70,11 @@ class CLITest(unittest.TestCase):
 
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):
-                with Image.open(os.path.join(self.example_path, f'{x}-{y}.png')) as im:
-                    self.assertTrue((
-                        np.array(im) ==
-                        output_image[(self.max_y-y)*self.height:(self.max_y-y+1)*self.height, x*self.width:(x+1)*self.width, :]
-                    ).all())
+                im = Image.new_from_file(os.path.join(self.example_path, f'{x}-{y}.png'))
+                self.assertEqual(
+                    (im == output_image.crop(x*self.width, (self.max_y-y)*self.height, self.width, self.height)).min(),
+                    255
+                )
 
     def test_downsampled_output(self):
         output_capture = io.TextIOWrapper(io.BytesIO())
@@ -87,11 +89,14 @@ class CLITest(unittest.TestCase):
         height, width = round(self.height*ratio), round(self.width*ratio)
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):
-                with Image.open(os.path.join(self.example_path, f'{x}-{y}.png')) as im: 
-                    self.assertTrue((
-                        np.array(im.resize((width, height))) ==
-                        output_image[(self.max_y-y)*height:(self.max_y-y+1)*height, x*width:(x+1)*width, :]
-                    ).all())
+                im = Image.new_from_file(os.path.join(self.example_path, f'{x}-{y}.png')).resize(
+                    width/self.width,
+                    vscale=height/self.height
+                )
+                self.assertEqual(
+                    (im == output_image.crop(x*width, (self.max_y-y)*height, width, height)).min(),
+                    255
+                )
 
 
 if __name__ == '__main__':
