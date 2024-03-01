@@ -43,7 +43,12 @@ def main():
     # Determine maximum x and y to set output resolution
     max_x, max_y = -1, -1
     extension_grid = defaultdict(dict)
+    extra_config = {}
     for filename in os.listdir(arguments.directory):
+        if filename == 'config.json':
+            with open(os.path.join(arguments.directory, filename)) as config_file:
+                extra_config = json.load(config_file)
+            
         match = filename_re.match(filename)
         if match is None:
             warnings.warn(f'Filename {filename} does not match lfgen format. Ignoring.', RuntimeWarning)
@@ -106,7 +111,8 @@ def main():
         zf.writestr('config.json', json.dumps({
             "lightFieldAttributes": {
                 "hogelDimensions": [input_width, input_height],
-                "file": "image.png"
+                "file": "image.png",
+                **extra_config
             }
         }))
         with zf.open("image.png", mode='w') as image_zf:

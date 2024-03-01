@@ -20,6 +20,8 @@ class CLITest(unittest.TestCase):
         
         cls.height = random.randint(200, 800)
         cls.width = random.randint(200, 800)
+        cls.fov_x = random.uniform(90, 120)
+        cls.fov_y = random.uniform(90, 120)
 
         os.makedirs(cls.example_path, exist_ok=True)
         for x in range(cls.max_x+1):
@@ -28,6 +30,11 @@ class CLITest(unittest.TestCase):
                     Image.gaussnoise(cls.width, cls.height),
                     Image.gaussnoise(cls.width, cls.height)
                 ]).cast(BandFormat.UCHAR).pngsave(os.path.join(cls.example_path, f'{x}-{y}.png'))
+        
+        with open(os.path.join(cls.example_path, 'config.json'), 'w') as config_file:
+            json.dump({
+                "displayFOV": [cls.fov_x, cls.fov_y]
+            }, config_file)
 
     @classmethod
     def tearDownClass(cls):
@@ -54,6 +61,7 @@ class CLITest(unittest.TestCase):
             config_json = json.load(zf.open('config.json'))
             lf_attrs = config_json["lightFieldAttributes"]
             self.assertEqual(lf_attrs["hogelDimensions"], [self.width, self.height])
+            self.assertEqual(lf_attrs["displayFOV"], [self.fov_x, self.fov_y])
             with zf.open(lf_attrs["file"]) as img_file:
                 output_image = Image.pngload_buffer(img_file.read())
 
