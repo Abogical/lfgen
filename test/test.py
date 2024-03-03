@@ -53,16 +53,20 @@ class CLITest(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             lfgen.main.main()
 
-    def get_attrs_and_image(self, output_capture):
+    def get_attrs_and_image(self, output_capture, output_width=None, output_height=None, fov_x=None, fov_y=None):
         output_image = None
         lf_attrs = None
+        fov_x = fov_x or self.fov_x
+        fov_y = fov_y or self.fov_y
+        output_width = output_width or self.width
+        output_height = output_height or self.height
 
         output_capture.buffer.seek(0)
         with ZipFile(output_capture.buffer) as zf:
             config_json = json.load(zf.open('config.json'))
             lf_attrs = config_json["lightFieldAttributes"]
-            self.assertEqual(lf_attrs["hogelDimensions"], [self.width, self.height])
-            self.assertEqual(lf_attrs["displayFOV"], [self.fov_x, self.fov_y])
+            self.assertEqual(lf_attrs["hogelDimensions"], [output_width, output_height])
+            self.assertEqual(lf_attrs["displayFOV"], [fov_x, fov_y])
             with zf.open(lf_attrs["file"]) as img_file:
                 output_image = Image.pngload_buffer(img_file.read())
 
@@ -93,9 +97,9 @@ class CLITest(unittest.TestCase):
             with patch('sys.argv', ['lfgen', self.example_path, '-r', str(ratio)]):
                 lfgen.main.main()
 
-        lf_attrs, output_image = self.get_attrs_and_image(output_capture)
-
         height, width = round(self.height*ratio), round(self.width*ratio)
+        lf_attrs, output_image = self.get_attrs_and_image(output_capture, width, height)
+
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):
                 im = Image.new_from_file(os.path.join(self.example_path, f'{x}-{y}.png')).resize(
@@ -118,8 +122,6 @@ class CLITest(unittest.TestCase):
                 '--fov-x', str(output_fov_x), '--fov-y', str(output_fov_y)]):
                 lfgen.main.main()
 
-        lf_attrs, output_image = self.get_attrs_and_image(output_capture)
-
         calculate_dim = lambda a, fov, new_fov: round(a*
             tan(radians(new_fov/2))/tan(radians(fov/2)))
         crop_height, crop_width = (
@@ -130,6 +132,8 @@ class CLITest(unittest.TestCase):
             round(crop_height*ratio),
             round(crop_width*ratio)
         )
+
+        lf_attrs, output_image = self.get_attrs_and_image(output_capture, width, height, output_fov_x, output_fov_y)
         
         for x in range(self.max_x+1):
             for y in range(self.max_y+1):

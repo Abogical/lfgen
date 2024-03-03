@@ -106,6 +106,7 @@ def main():
                         crop_width = restricted_fov(output_width, extra_config["displayFOV"][0], arguments.fov_x)
                         crop_left = floor((output_width-crop_width)/2)
                         output_width = crop_width
+                        extra_config["displayFOV"][0] = arguments.fov_x
                     else:
                         crop_left = 0
                         crop_width = output_width
@@ -114,6 +115,7 @@ def main():
                         crop_height = restricted_fov(output_height, extra_config["displayFOV"][1], arguments.fov_y)
                         crop_top = floor((output_height-crop_height)/2)
                         output_height = crop_height
+                        extra_config["displayFOV"][1] = arguments.fov_y
                     else:
                         crop_top = 0
                         crop_height = output_height
@@ -156,7 +158,7 @@ def main():
     with ZipFile(output_buffer, mode='w') as zf:
         zf.writestr('config.json', json.dumps({
             "lightFieldAttributes": {
-                "hogelDimensions": [input_width, input_height],
+                "hogelDimensions": [output_width, output_height],
                 "file": "image.png",
                 **extra_config
             }
