@@ -10,6 +10,7 @@ import json
 import rawpy
 from tqdm import tqdm
 import itertools
+from math import tan, radians, floor
 
 argument_parser = argparse.ArgumentParser(
     prog='lfgen',
@@ -35,7 +36,25 @@ argument_parser.add_argument(
     help='Output filename, default is stdout',
 )
 
+argument_parser.add_argument(
+    '--fov-x',
+    type=float,
+    help='Simulate a restricted horizontal field of view'
+)
+
+argument_parser.add_argument(
+    '--fov-y',
+    type=float,
+    help='Simulate a restricted vertical field of view'
+)
+
 filename_re = re.compile("(\\d+)-(\\d+)\\.(.*)")
+
+def tan_degrees(degrees):
+    return tan(radians(degrees))
+
+def restricted_fov(length, fov, new_fov):
+    return round(length*tan_degrees(new_fov/2)/tan_degrees(fov/2))
 
 def main():
     arguments = argument_parser.parse_args()
@@ -63,6 +82,7 @@ def main():
         raise SystemExit(f"No filename that matches the lfgen format is inside the directory {arguments.directory}")
 
     output, input_height, input_width, output_height, output_width = None, None, None, None, None
+    crop_left, crop_top, crop_width, crop_height = None, None, None, None
     progress = tqdm(desc='Processing images', total=(max_x+1)*(max_y+1))
     for x in range(max_x+1):
         for y in range(max_y+1):
@@ -81,13 +101,39 @@ def main():
 
                 if output is None:
                     input_height, input_width = image.height, image.width
-                    output_height, output_width = round(arguments.ratio*input_height), round(arguments.ratio*input_width)
+                    output_height, output_width = input_height, input_width
+                    if arguments.fov_x is not None:
+                        crop_width = restricted_fov(output_width, extra_config["displayFOV"][0], arguments.fov_x)
+                        crop_left = floor((output_width-crop_width)/2)
+                        output_width = crop_width
+                    else:
+                        crop_left = 0
+                        crop_width = output_width
+                    
+                    if arguments.fov_y is not None:
+                        crop_height = restricted_fov(output_height, extra_config["displayFOV"][1], arguments.fov_y)
+                        crop_top = floor((output_height-crop_height)/2)
+                        output_height = crop_height
+                    else:
+                        crop_top = 0
+                        crop_height = output_height
+
+                    output_height, output_width = round(arguments.ratio*output_height), round(arguments.ratio*output_width)
                     output = Image.black((max_x+1)*output_width, (max_y+1)*output_height, bands=3)
                 elif (input_height, input_width) != (image.height, image.width):
                     warnings.warn(
                         f'Inconsistent input image resolutions. '
                         f'Expected {input_height}x{input_width}, '
                         f'got {image.height}x{image.width}.'
+                    )
+
+                # Crop the image to simulate a restricted field of view
+                if crop_top != 0 or crop_left != 0:
+                    image = image.crop(
+                        crop_left,
+                        crop_top,
+                        crop_width,
+                        crop_height
                     )
                 
                 # Downsample image and add image to integral image
@@ -115,8 +161,7 @@ def main():
                 **extra_config
             }
         }))
-        with zf.open("image.png", mode='w') as image_zf:
-            image_zf.write(output.pngsave_buffer())
+        zf.writestr('image.png', output.pngsave_buffer())
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from pyvips.enums import BandFormat
 from zipfile import ZipFile
 import json
 import io
+from math import tan, radians, floor
 
 class CLITest(unittest.TestCase):
     @classmethod
@@ -100,6 +101,48 @@ class CLITest(unittest.TestCase):
                 im = Image.new_from_file(os.path.join(self.example_path, f'{x}-{y}.png')).resize(
                     width/self.width,
                     vscale=height/self.height
+                )
+                self.assertEqual(
+                    (im == output_image.crop(x*width, (self.max_y-y)*height, width, height)).min(),
+                    255
+                )
+
+    def test_limited_fov_output(self):
+        output_capture = io.TextIOWrapper(io.BytesIO())
+        ratio = random.uniform(0.2, 0.9)
+        output_fov_x = random.uniform(45, self.fov_x)
+        output_fov_y = random.uniform(45, self.fov_y)
+
+        with patch('sys.stdout', output_capture):
+            with patch('sys.argv', ['lfgen', self.example_path, '-r', str(ratio),
+                '--fov-x', str(output_fov_x), '--fov-y', str(output_fov_y)]):
+                lfgen.main.main()
+
+        lf_attrs, output_image = self.get_attrs_and_image(output_capture)
+
+        calculate_dim = lambda a, fov, new_fov: round(a*
+            tan(radians(new_fov/2))/tan(radians(fov/2)))
+        crop_height, crop_width = (
+            calculate_dim(self.height, self.fov_y, output_fov_y),
+            calculate_dim(self.width, self.fov_x, output_fov_x)
+        )
+        height, width = (
+            round(crop_height*ratio),
+            round(crop_width*ratio)
+        )
+        
+        for x in range(self.max_x+1):
+            for y in range(self.max_y+1):
+                im = Image.new_from_file(os.path.join(self.example_path, f'{x}-{y}.png'))
+                im = im.crop(
+                    floor((im.width-crop_width)/2),
+                    floor((im.height-crop_height)/2),
+                    crop_width,
+                    crop_height
+                )
+                im = im.resize(
+                    width/im.width,
+                    vscale=height/im.height
                 )
                 self.assertEqual(
                     (im == output_image.crop(x*width, (self.max_y-y)*height, width, height)).min(),
