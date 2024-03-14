@@ -67,15 +67,15 @@ def main():
         if filename == 'config.json':
             with open(os.path.join(arguments.directory, filename)) as config_file:
                 extra_config = json.load(config_file)
-            
-        match = filename_re.match(filename)
-        if match is None:
-            warnings.warn(f'Filename {filename} does not match lfgen format. Ignoring.', RuntimeWarning)
-        else:
-            x, y, ext = int(match.group(1)), int(match.group(2)), match.group(3)
-            max_x = max(max_x, int(x))
-            max_y = max(max_y, int(y))
-            extension_grid[x][y] = ext
+        else: 
+            match = filename_re.match(filename)
+            if match is None:
+                warnings.warn(f'Filename {filename} does not match lfgen format. Ignoring.', RuntimeWarning)
+            else:
+                x, y, ext = int(match.group(1)), int(match.group(2)), match.group(3)
+                max_x = max(max_x, int(x))
+                max_y = max(max_y, int(y))
+                extension_grid[x][y] = ext
 
     if max_x == -1:
         # No filename found with a matching format
