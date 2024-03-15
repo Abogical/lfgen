@@ -1,3 +1,4 @@
 pyvips
 git+https://github.com/letmaik/rawpy.git
 tqdm
+numpy

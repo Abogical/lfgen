@@ -9,8 +9,11 @@ from zipfile import ZipFile
 import json
 import rawpy
 from tqdm import tqdm
-import itertools
-from math import tan, radians, floor
+from .image_processor import ImageProcessor
+import concurrent.futures
+import multiprocessing
+import multiprocessing.managers
+import numpy as np
 
 argument_parser = argparse.ArgumentParser(
     prog='lfgen',
@@ -48,13 +51,14 @@ argument_parser.add_argument(
     help='Simulate a restricted vertical field of view'
 )
 
+argument_parser.add_argument(
+    '-j', '--jobs',
+    type=int,
+    help='Number of jobs',
+    default=multiprocessing.cpu_count()
+)
+
 filename_re = re.compile("(\\d+)-(\\d+)\\.(.*)")
-
-def tan_degrees(degrees):
-    return tan(radians(degrees))
-
-def restricted_fov(length, fov, new_fov):
-    return round(length*tan_degrees(new_fov/2)/tan_degrees(fov/2))
 
 def main():
     arguments = argument_parser.parse_args()
@@ -81,89 +85,76 @@ def main():
         # No filename found with a matching format
         raise SystemExit(f"No filename that matches the lfgen format is inside the directory {arguments.directory}")
 
-    output, input_height, input_width, output_height, output_width = None, None, None, None, None
-    crop_left, crop_top, crop_width, crop_height = None, None, None, None
-    progress = tqdm(desc='Processing images', total=(max_x+1)*(max_y+1))
-    for x in range(max_x+1):
-        for y in range(max_y+1):
-            progress.set_postfix_str(f'Current: ({x}, {y})')
-            extension = extension_grid[x].get(y)
-            if extension is None:
-                warnings.warn(f'Missing file for x:{x} and y:{y}. Will be blank in output image')
-            else:
-                filename = os.path.join(arguments.directory, f'{x}-{y}.{extension}')
-                image = None
-                if extension.lower() == "nef":
-                    with rawpy.imread(filename) as raw:
-                        image = Image.new_from_array(raw.postprocess())
-                else:
-                    image = Image.new_from_file(filename)
-
-                if output is None:
-                    input_height, input_width = image.height, image.width
-                    output_height, output_width = input_height, input_width
-                    if arguments.fov_x is not None:
-                        crop_width = restricted_fov(output_width, extra_config["displayFOV"][0], arguments.fov_x)
-                        crop_left = floor((output_width-crop_width)/2)
-                        output_width = crop_width
-                        extra_config["displayFOV"][0] = arguments.fov_x
-                    else:
-                        crop_left = 0
-                        crop_width = output_width
-                    
-                    if arguments.fov_y is not None:
-                        crop_height = restricted_fov(output_height, extra_config["displayFOV"][1], arguments.fov_y)
-                        crop_top = floor((output_height-crop_height)/2)
-                        output_height = crop_height
-                        extra_config["displayFOV"][1] = arguments.fov_y
-                    else:
-                        crop_top = 0
-                        crop_height = output_height
-
-                    output_height, output_width = round(arguments.ratio*output_height), round(arguments.ratio*output_width)
-                    output = Image.black((max_x+1)*output_width, (max_y+1)*output_height, bands=3)
-                elif (input_height, input_width) != (image.height, image.width):
-                    warnings.warn(
-                        f'Inconsistent input image resolutions. '
-                        f'Expected {input_height}x{input_width}, '
-                        f'got {image.height}x{image.width}.'
-                    )
-
-                # Crop the image to simulate a restricted field of view
-                if crop_top != 0 or crop_left != 0:
-                    image = image.crop(
-                        crop_left,
-                        crop_top,
-                        crop_width,
-                        crop_height
-                    )
-                
-                # Downsample image and add image to integral image
-                if arguments.ratio != 1:
-                    image = image.resize(
-                        output_width/image.width,
-                        vscale=output_height/image.height
-                    )
-
-                output = output.insert(
-                    image,
-                    x*output_width,
-                    (max_y-y)*output_height,
-                    expand=False
-                )
-            progress.update(1)
+    img_processor = ImageProcessor(
+        arguments.directory,
+        arguments.ratio,
+        max_x,
+        max_y,
+        extra_config["displayFOV"][0],
+        extra_config["displayFOV"][1],
+        arguments.fov_x,
+        arguments.fov_y
+    )
     
+    total_images = (max_x+1)*(max_y+1)
+    progress = tqdm(desc='Processing images', total=total_images)
+    shared_array = None
+    shared_np_array = None
 
-    output_buffer = arguments.output or sys.stdout.buffer
-    with ZipFile(output_buffer, mode='w') as zf:
-        zf.writestr('config.json', json.dumps({
-            "lightFieldAttributes": {
-                "hogelDimensions": [output_width, output_height],
-                "file": "image.png",
-                **extra_config
-            }
-        }))
-        zf.writestr('image.png', output.pngsave_buffer())
+    with multiprocessing.managers.SharedMemoryManager() as smm:
+        with concurrent.futures.ProcessPoolExecutor(
+		min(arguments.jobs, total_images-1),
+		mp_context=multiprocessing.get_context('spawn')
+	) as pool:
+            future_to_coord = {}
+            for x in range(max_x+1):
+                for y in range(max_y+1):
+                    # progress.set_postfix_str(f'Current: ({x}, {y})')
+                    extension = extension_grid[x].get(y)
+                    if extension is None:
+                        warnings.warn(f'Missing file for x:{x} and y:{y}. Will be blank in output image')
+                    else:
+                        if shared_array is None:
+                            subimage = img_processor.set_dims_and_get_array(x, y, extension)
+                            shared_array = smm.SharedMemory(
+                                (max_x+1)*img_processor.output_width*(max_y+1)*img_processor.output_height*3
+                            )
+                            shared_np_array = np.ndarray((
+                                (max_y+1)*img_processor.output_height,
+                                (max_x+1)*img_processor.output_width,
+                                3
+                            ), buffer=shared_array.buf, dtype=np.uint8)
+                            start_y = (max_y-y)*img_processor.output_height
+                            start_x = x*img_processor.output_width
+                            shared_np_array[
+                                start_y:start_y+img_processor.output_height,
+                                start_x:start_x+img_processor.output_width,
+                                :
+                            ] = subimage
+
+                            extra_config["displayFOV"] = [img_processor.fov_x, img_processor.fov_y]
+                            progress.set_postfix_str(f'Completed: ({x}, {y})')
+                            progress.update(1)
+                        else:
+                            future_to_coord[pool.submit(img_processor.set_shared_array, x, y, extension, shared_array)] = (x,y)
+            
+            for future in concurrent.futures.as_completed(future_to_coord):
+                x, y = future_to_coord[future]
+                future.result() # Raise any errors if the process raised any
+                progress.set_postfix_str(f'Completed: ({x}, {y})')
+                progress.update(1)
+
+        output = Image.new_from_array(shared_np_array)
+        output_buffer = arguments.output or sys.stdout.buffer
+        with ZipFile(output_buffer, mode='w') as zf:
+            zf.writestr('config.json', json.dumps({
+                "lightFieldAttributes": {
+                    "hogelDimensions": [img_processor.output_width, img_processor.output_height],
+                    "file": "image.png",
+                    **extra_config
+                }
+            }))
+            zf.writestr('image.png', output.pngsave_buffer())
 
 
 if __name__ == "__main__":
