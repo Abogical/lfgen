@@ -149,7 +149,8 @@ def main():
         with ZipFile(output_buffer, mode='w') as zf:
             zf.writestr('config.json', json.dumps({
                 "lightFieldAttributes": {
-                    "hogelDimensions": [img_processor.output_width, img_processor.output_height],
+                    "hogelDimensions": [max_x+1, max_y+1],
+                    "directionalResolution": [img_processor.output_width, img_processor.output_height],
                     "file": "image.png",
                     **extra_config
                 }

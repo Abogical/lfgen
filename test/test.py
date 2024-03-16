@@ -65,7 +65,8 @@ class CLITest(unittest.TestCase):
         with ZipFile(output_capture.buffer) as zf:
             config_json = json.load(zf.open('config.json'))
             lf_attrs = config_json["lightFieldAttributes"]
-            self.assertEqual(lf_attrs["hogelDimensions"], [output_width, output_height])
+            self.assertEqual(lf_attrs["hogelDimensions"], [self.max_x+1, self.max_y+1])
+            self.assertEqual(lf_attrs["directionalResolution"], [output_width, output_height])
             self.assertEqual(lf_attrs["displayFOV"], [fov_x, fov_y])
             with zf.open(lf_attrs["file"]) as img_file:
                 output_image = Image.pngload_buffer(img_file.read())
