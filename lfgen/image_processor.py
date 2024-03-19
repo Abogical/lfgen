@@ -11,13 +11,14 @@ def restricted_fov(length, fov, new_fov):
     return round(length*tan_degrees(new_fov/2)/tan_degrees(fov/2))
 
 class ImageProcessor:
-    def __init__(self, directory, ratio, max_x, max_y, orig_fov_x, orig_fov_y, fov_x, fov_y):
+    def __init__(self, directory, ratio, max_x, max_y, orig_fov_x, orig_fov_y, fov_x, fov_y, flip_y):
         self.directory = directory
         self.orig_fov_x, self.orig_fov_y = orig_fov_x, orig_fov_y
         self.ratio, self.fov_x, self.fov_y = ratio, fov_x, fov_y
         self.max_x, self.max_y = max_x, max_y
         self.output, self.input_height, self.input_width, self.output_height, self.output_width = None, None, None, None, None
         self.crop_left, self.crop_top, self.crop_width, self.crop_height = None, None, None, None
+        self.flip_y = flip_y
     
     def _get_image(self, x, y, extension):
         filename = os.path.join(self.directory, f'{x}-{y}.{extension}')
@@ -50,6 +51,9 @@ class ImageProcessor:
                 self.output_width/image.width,
                 vscale=self.output_height/image.height
             )
+        
+        if self.flip_y:
+            image = image.flipver()
         
         return image
 

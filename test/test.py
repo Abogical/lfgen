@@ -90,6 +90,23 @@ class CLITest(unittest.TestCase):
                     255
                 )
 
+    def test_flipped_output(self):
+        output_capture = io.TextIOWrapper(io.BytesIO())
+
+        with patch('sys.stdout', output_capture):
+            with patch('sys.argv', ['lfgen', '--flip-y', self.example_path]):
+                lfgen.main.main()
+
+        lf_attrs, output_image = self.get_attrs_and_image(output_capture)
+
+        for x in range(self.max_x+1):
+            for y in range(self.max_y+1):
+                im = Image.new_from_file(os.path.join(self.example_path, f'{x}-{y}.png'))
+                self.assertEqual(
+                    (im == output_image.crop(x*self.width, (self.max_y-y)*self.height, self.width, self.height).flipver()).min(),
+                    255
+                )
+
     def test_downsampled_output(self):
         output_capture = io.TextIOWrapper(io.BytesIO())
         ratio = random.uniform(0.2, 0.9)

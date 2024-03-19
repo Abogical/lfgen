@@ -58,6 +58,12 @@ argument_parser.add_argument(
     default=multiprocessing.cpu_count()
 )
 
+argument_parser.add_argument(
+    '--flip-y',
+    help='Flip images vertically',
+    action='store_true'
+)
+
 filename_re = re.compile("(\\d+)-(\\d+)\\.(.*)")
 
 def main():
@@ -93,7 +99,8 @@ def main():
         extra_config["displayFOV"][0],
         extra_config["displayFOV"][1],
         arguments.fov_x,
-        arguments.fov_y
+        arguments.fov_y,
+        arguments.flip_y
     )
     
     total_images = (max_x+1)*(max_y+1)
