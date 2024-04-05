@@ -127,8 +127,8 @@ def main():
                                 (max_x+1)*img_processor.output_width*(max_y+1)*img_processor.output_height*3
                             )
                             shared_np_array = np.ndarray((
-                                (max_y+1)*img_processor.output_height,
-                                (max_x+1)*img_processor.output_width,
+                                img_processor.buffer_height,
+                                img_processor.buffer_width,
                                 3
                             ), buffer=shared_array.buf, dtype=np.uint8)
 
