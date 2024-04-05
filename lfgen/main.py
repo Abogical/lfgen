@@ -126,11 +126,7 @@ def main():
                             shared_array = smm.SharedMemory(
                                 (max_x+1)*img_processor.output_width*(max_y+1)*img_processor.output_height*3
                             )
-                            shared_np_array = np.ndarray((
-                                img_processor.buffer_height,
-                                img_processor.buffer_width,
-                                3
-                            ), buffer=shared_array.buf, dtype=np.uint8)
+                            shared_np_array = img_processor.get_shared_numpy_array(shared_array)
 
                             img_processor.set_shared_array_from_image(x, y, shared_np_array, subimage)
 

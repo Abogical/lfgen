@@ -88,6 +88,9 @@ class ImageProcessor:
 
         return self._get_array(image)
 
+    def get_shared_numpy_array(self, array):
+        return np.ndarray((self.buffer_height, self.buffer_width, 3), dtype=np.uint8, buffer=array.buf)
+
     def set_shared_array_from_image(self, x, y, np_img, image):
         array_x_start = x*self.output_width
         array_y_start = (self.max_y-y)*self.output_height
@@ -103,7 +106,7 @@ class ImageProcessor:
         self.set_shared_array_from_image(
             x,
             y,
-            np.ndarray((self.buffer_height, self.buffer_width, 3), dtype=np.uint8, buffer=array.buf),
+            self.get_shared_numpy_array(array),
             self._get_array(self._get_image(x, y, extension))
         )
 
