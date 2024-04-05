@@ -1,4 +1,4 @@
 pyvips
-git+https://github.com/letmaik/rawpy.git
+rawpy
 tqdm
 numpy
