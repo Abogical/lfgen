@@ -110,9 +110,9 @@ def main():
 
     with multiprocessing.managers.SharedMemoryManager() as smm:
         with concurrent.futures.ProcessPoolExecutor(
-		min(arguments.jobs, total_images-1),
-		mp_context=multiprocessing.get_context('spawn')
-	) as pool:
+            min(arguments.jobs, total_images-1),
+            mp_context=multiprocessing.get_context('spawn')
+        ) as pool:
             future_to_coord = {}
             for x in range(max_x+1):
                 for y in range(max_y+1):
@@ -131,13 +131,8 @@ def main():
                                 (max_x+1)*img_processor.output_width,
                                 3
                             ), buffer=shared_array.buf, dtype=np.uint8)
-                            start_y = (max_y-y)*img_processor.output_height
-                            start_x = x*img_processor.output_width
-                            shared_np_array[
-                                start_y:start_y+img_processor.output_height,
-                                start_x:start_x+img_processor.output_width,
-                                :
-                            ] = subimage
+
+                            img_processor.set_shared_array_from_image(x, y, shared_np_array, subimage)
 
                             extra_config["displayFOV"] = [img_processor.fov_x, img_processor.fov_y]
                             progress.set_postfix_str(f'Completed: ({x}, {y})')
