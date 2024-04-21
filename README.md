@@ -39,3 +39,13 @@ options:
 ## Output
 
 The output integral image is an LF file with the config file and image inside it.
+
+## Example image
+The following is a 4x4 integral image downscaled down to 10% and cropped to 45 degrees in each dimension
+
+![stitched](https://github.com/Abogical/lfgen/assets/10688496/0cb0f5af-c169-45db-8809-f47e5d630471)
+
+Using this command
+```
+python -m lfgen.main --fov-x 45 --fov-y 45 -r 0.1 -o output.lf
+```
