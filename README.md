@@ -15,6 +15,10 @@ Where:
 
 For example, the image at x-value 2 and y-value 7 may have a filename `2-7.png`.
 
+## Install dependencies
+
+Install dependencies first with `pip install -r requirements.txt`
+
 ## Usage
 ```
 usage: lfgen [-h] [-r RATIO] [-o OUTPUT] [--fov-x FOV_X] [--fov-y FOV_Y] [-j JOBS] [--flip-y] directory
