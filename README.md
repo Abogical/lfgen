@@ -17,13 +17,24 @@ For example, the image at x-value 2 and y-value 7 may have a filename `2-7.png`.
 
 ## Usage
 ```
-lfgen [-h] [-r RATIO] [-o OUTPUT] directory
+usage: lfgen [-h] [-r RATIO] [-o OUTPUT] [--fov-x FOV_X] [--fov-y FOV_Y] [-j JOBS] [--flip-y] directory
+
+Generates a light field integral image from a folder of images
+
+positional arguments:
+  directory             Source directory
+
+options:
+  -h, --help            show this help message and exit
+  -r RATIO, --ratio RATIO
+                        Downsampling ratio to use
+  -o OUTPUT, --output OUTPUT
+                        Output filename, default is stdout
+  --fov-x FOV_X         Simulate a restricted horizontal field of view
+  --fov-y FOV_Y         Simulate a restricted vertical field of view
+  -j JOBS, --jobs JOBS  Number of jobs
+  --flip-y              Flip images vertically
 ```
-Where:
-- `directory`: Source directory
-- `-h`: Show help
-- `-r RATIO` or ` --ratio RATIO`: Downsampling ratio to use
-- `-o OUTPUT` or ` --output OUTPUT`: Output filename, default is standard output.
 
 ## Output
 
